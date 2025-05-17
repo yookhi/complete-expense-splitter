@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Proportional Expense Splitter</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-dark: #1a1a2e;
+      --bg-darker: #16213e;
+      --accent: #0f3460;
+      --accent-light: #4a6fa5;
+      --text: #e6e6e6;
+      --text-light: #ffffff;
+      --primary: #4cc9f0;
+      --secondary: #f72585;
+      --success: #4ad66d;
+      --warning: #f8961e;
+      --danger: #ef233c;
+      --card-bg: #2a2a3a;
+      --input-bg: #2d3748;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background-color: var(--bg-dark);
+      color: var(--text);
+      min-height: 100vh;
+      position: relative;
+      padding-bottom: 30px;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    h1, h2 {
+      color: var(--text-light);
+      margin-bottom: 25px;
+    }
+    
+    .mode-header {
+      color: var(--text-light);
+      margin: 10px 0 20px;
+      font-size: 1.5rem;
+    }
+    
+    input {
+      padding: 12px;
+      font-size: 16px;
+      margin: 8px;
+      width: 120px;
+      background-color: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--accent-light);
+      border-radius: 6px;
+      transition: all 0.3s ease;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.3);
+    }
+    
+    input.expense-name {
+      width: 200px;
+    }
+    
+    .remove-btn {
+      color: var(--danger);
+      background: none;
+      border: none;
+      padding: 0;
+      margin-left: 10px;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+      transition: transform 0.2s;
+    }
+    
+    .remove-btn:hover {
+      transform: scale(1.2);
+    }
+    
+    #result, #details, #friendDetails {
+      margin-top: 25px;
+      font-size: 18px;
+      background-color: var(--card-bg);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    #result, #friendResult {
+      font-weight: bold;
+      color: var(--text-light);
+    }
+    
+    #details, #friendDetails {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.5s ease;
+      padding: 0 20px;
+      margin: 20px auto;
+      width: 90%;
+      text-align: left;
+    }
+    
+    #details.open, #friendDetails.open {
+      padding: 20px;
+      max-height: 1000px;
+    }
+    
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      margin: 12px;
+      background-color: var(--accent);
+      color: var(--text-light);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+    }
+    
+    button:hover {
+      background-color: var(--accent-light);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .expense-inputs {
+      margin-top: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .friend-mode {
+      display: none;
+    }
+    
+    canvas {
+      margin-top: 30px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+      background-color: var(--card-bg);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .toggle-label {
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      margin: 10px 0;
+    }
+    
+    .toggle-label input[type="checkbox"] {
+      margin: 0 8px 0 0;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+    
+    .split-result {
+      display: inline-block;
+      padding: 8px 12px;
+      margin: 5px;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    
+    .your-split {
+      background-color: var(--primary);
+      color: var(--bg-dark);
+    }
+    
+    .partner-split {
+      background-color: var(--secondary);
+      color: white;
+    }
+    
+    .friend-split {
+      background-color: var(--success);
+      color: var(--bg-dark);
+    }
+    
+    .total-split {
+      color: var(--text-light);
+      font-weight: bold;
+      padding: 0;
+      background: none;
+    }
+    
+    .amount-row {
+      display: flex;
+      justify-content: space-between;
+      max-width: 300px;
+      margin: 0 auto 5px;
+    }
+    
+    .amount-label {
+      text-align: right;
+      padding-right: 10px;
+    }
+    
+    .amount-value {
+      text-align: left;
+    }
+    
+    #downloadLink {
+      display: inline-block;
+      margin-top: 15px;
+      padding: 10px 20px;
+      background-color: var(--success);
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+    }
+    
+    #downloadLink:hover {
+      background-color: #3aa355;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .mode-toggle {
+      background-color: var(--accent-light);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .mode-toggle::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, transparent 25%, rgba(255,255,255,0.1) 50%, transparent 75%);
+      background-size: 200% 200%;
+      animation: shine 2s infinite;
+    }
+    
+    .attribution {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      font-size: 11px;
+      color: #4a6fa5;
+      opacity: 0.7;
+    }
+    
+    @keyframes shine {
+      0% { background-position: 100% 100%; }
+      100% { background-position: 0% 0%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Expense Splitter</h1>
+    <button id="modeToggle" class="mode-toggle" onclick="toggleMode()">Switch to Friend Mode</button>
+
+    <div id="default-mode">
+      <h2 class="mode-header">Partner Mode</h2>
+      <div>
+        <label>Your %: </label>
+        <input type="number" id="yourPct" value="35" min="0" max="100" oninput="syncPercent('your')">
+        <label>Partner %: </label>
+        <input type="number" id="partnerPct" value="65" min="0" max="100" oninput="syncPercent('partner')">
+      </div>
+
+      <div id="expenses"></div>
+      <button onclick="addExpense()">+ Add Another Expense</button>
+
+      <div id="result"></div>
+      <canvas id="expenseChart" width="400" height="200"></canvas>
+
+      <button onclick="toggleDetails()">More Details</button>
+      <div id="details"></div>
+
+      <button onclick="generateExport()">Generate CSV Breakdown</button>
+      <a id="downloadLink" style="display:none">Download CSV</a>
+    </div>
+
+    <div id="friend-mode" class="friend-mode">
+      <h2>Friend Mode: Restaurant Bill Splitter</h2>
+      <div id="friend-expenses"></div>
+      <button onclick="addFriendExpense()">+ Add Another Friend</button>
+
+      <div>
+        <label id="taxLabel">Tax ($):</label>
+        <input type="number" id="friendTaxAmt" value="0" oninput="calculateFriendSplit()">
+        <label id="tipLabel">Tip ($):</label>
+        <input type="number" id="friendTipAmt" value="0" oninput="calculateFriendSplit()">
+        <br>
+        <label class="toggle-label"><input type="checkbox" id="usePercent" onchange="toggleLabelMode()"><span>Use % instead</span></label>
+      </div>
+
+      <div id="friendResult"></div>
+      <canvas id="friendChart" width="400" height="200"></canvas>
+
+      <button onclick="toggleFriendDetails()">More Details</button>
+      <div id="friendDetails"></div>
+    </div>
+  </div>
+
+  <div class="attribution">Made by Eugene Luu</div>
+
+  <script>
+    let syncing = false;
+    let chartInstances = {};
+
+    function toggleMode() {
+      const defaultDiv = document.getElementById("default-mode");
+      const friendDiv = document.getElementById("friend-mode");
+      const modeToggle = document.getElementById("modeToggle");
+      
+      if (defaultDiv.style.display === "none") {
+        defaultDiv.style.display = "block";
+        friendDiv.style.display = "none";
+        modeToggle.textContent = "Switch to Friend Mode";
+      } else {
+        defaultDiv.style.display = "none";
+        friendDiv.style.display = "block";
+        modeToggle.textContent = "Switch to Partner Mode";
+      }
+    }
+
+    function toggleLabelMode() {
+      const usePercent = document.getElementById("usePercent").checked;
+      document.getElementById("taxLabel").innerText = usePercent ? "Tax (%):" : "Tax ($):";
+      document.getElementById("tipLabel").innerText = usePercent ? "Tip (%):" : "Tip ($):";
+      calculateFriendSplit();
+    }
+
+    function syncPercent(changed) {
+      if (syncing) return;
+      syncing = true;
+      let yourPct = parseFloat(document.getElementById("yourPct").value) || 0;
+      let partnerPct = 100 - yourPct;
+      if (changed === 'your') {
+        document.getElementById("partnerPct").value = partnerPct.toFixed(2);
+      } else {
+        yourPct = 100 - parseFloat(document.getElementById("partnerPct").value) || 0;
+        document.getElementById("yourPct").value = yourPct.toFixed(2);
+      }
+      syncing = false;
+      calculateSplit();
+    }
+
+    function addExpense() {
+      const container = document.createElement("div");
+      container.className = "expense-inputs";
+      container.innerHTML = `
+        <input type="text" class="expense-name" placeholder="Expense name">
+        <input type="number" class="expense" placeholder="Amount ($)" oninput="calculateSplit()">
+        <button type="button" class="remove-btn" onclick="this.parentNode.remove(); calculateSplit()">✕</button>
+      `;
+      document.getElementById("expenses").appendChild(container);
+    }
+
+    function addFriendExpense() {
+      const container = document.createElement("div");
+      container.className = "expense-inputs";
+      container.innerHTML = `
+        <input type="text" class="friend-name" placeholder="Friend's Name">
+        <input type="number" class="friend-expense" placeholder="Amount ($)" oninput="calculateFriendSplit()">
+        <button type="button" class="remove-btn" onclick="this.parentNode.remove(); calculateFriendSplit()">✕</button>
+      `;
+      document.getElementById("friend-expenses").appendChild(container);
+    }
+
+    function calculateSplit() {
+      const yourPct = parseFloat(document.getElementById("yourPct").value) || 0;
+      const partnerPct = 100 - yourPct;
+      const expenses = document.querySelectorAll(".expense");
+      const names = document.querySelectorAll(".expense-name");
+      let totalExpense = 0;
+      let details = "";
+      let chartData = [];
+
+      expenses.forEach((input, index) => {
+        const amount = parseFloat(input.value) || 0;
+        const name = names[index].value || `Expense ${index + 1}`;
+        totalExpense += amount;
+        const yourShare = (yourPct / 100) * amount;
+        const partnerShare = (partnerPct / 100) * amount;
+        details += `${name}: $${amount.toFixed(2)}\n - You: (${yourPct}/100) * ${amount} = $${yourShare.toFixed(2)}\n - Partner: (${partnerPct}/100) * ${amount} = $${partnerShare.toFixed(2)}\n\n`;
+        chartData.push({ label: name, value: amount });
+      });
+
+      const yourShare = (yourPct / 100) * totalExpense;
+      const partnerShare = (partnerPct / 100) * totalExpense;
+
+      document.getElementById("result").innerHTML = `
+        <div>Total Expense: <span class="total-split">$${totalExpense.toFixed(2)}</span></div>
+        <div>You pay: <span class="split-result your-split">$${yourShare.toFixed(2)}</span></div>
+        <div>Partner pays: <span class="split-result partner-split">$${partnerShare.toFixed(2)}</span></div>
+      `;
+
+      document.getElementById("details").innerText = details;
+      updateChart(chartData, 'expenseChart');
+    }
+
+    function calculateFriendSplit() {
+      const names = document.querySelectorAll(".friend-name");
+      const expenses = document.querySelectorAll(".friend-expense");
+      const usePercent = document.getElementById("usePercent").checked;
+
+      let total = 0;
+      let values = [];
+      let display = "";
+      let details = "";
+
+      expenses.forEach((input, i) => {
+        const amount = parseFloat(input.value) || 0;
+        total += amount;
+        const name = names[i].value || `Friend ${i + 1}`;
+        values.push({ name, amount });
+        details += `${name}: Ordered $${amount.toFixed(2)}\n`;
+      });
+
+      let tax = 0, tip = 0;
+      if (usePercent) {
+        const taxPct = parseFloat(document.getElementById("friendTaxAmt").value) || 0;
+        const tipPct = parseFloat(document.getElementById("friendTipAmt").value) || 0;
+        tax = total * (taxPct / 100);
+        tip = total * (tipPct / 100);
+        details += `\nTax (${taxPct}% of $${total.toFixed(2)}): $${tax.toFixed(2)}\n`;
+        details += `Tip (${tipPct}% of $${total.toFixed(2)}): $${tip.toFixed(2)}\n`;
+      } else {
+        tax = parseFloat(document.getElementById("friendTaxAmt").value) || 0;
+        tip = parseFloat(document.getElementById("friendTipAmt").value) || 0;
+        details += `\nTax: $${tax.toFixed(2)}\nTip: $${tip.toFixed(2)}\n`;
+      }
+
+      const grandTotal = total + tax + tip;
+      display += `
+        <div class="amount-row">
+          <span class="amount-label">Subtotal:</span>
+          <span class="amount-value">$${total.toFixed(2)}</span>
+        </div>
+        <div class="amount-row">
+          <span class="amount-label">Tax:</span>
+          <span class="amount-value">$${tax.toFixed(2)}</span>
+        </div>
+        <div class="amount-row">
+          <span class="amount-label">Tip:</span>
+          <span class="amount-value">$${tip.toFixed(2)}</span>
+        </div>
+        <div class="amount-row">
+          <span class="amount-label">Total:</span>
+          <span class="amount-value">$${grandTotal.toFixed(2)}</span>
+        </div>
+        <br>
+      `;
+
+      values.forEach(entry => {
+        const share = (entry.amount / total) * grandTotal;
+        display += `<div>${entry.name}: <span class="split-result friend-split">$${share.toFixed(2)}</span></div>`;
+        details += `${entry.name}: ($${entry.amount.toFixed(2)} / $${total.toFixed(2)}) * $${grandTotal.toFixed(2)} = $${share.toFixed(2)}\n`;
+      });
+
+      document.getElementById("friendResult").innerHTML = display;
+      document.getElementById("friendDetails").innerText = details;
+      updateChart(values, 'friendChart');
+    }
+
+    function updateChart(data, chartId) {
+      const ctx = document.getElementById(chartId).getContext('2d');
+      const labels = data.map(item => item.label || item.name);
+      const values = data.map(item => item.value || item.amount);
+      
+      // Shared color palette that doesn't include the split colors (#4cc9f0 and #f72585)
+      const backgroundColors = [
+        '#4ad66d', // Green
+        '#f8961e', // Orange
+        '#7209b7', // Purple
+        '#3a86ff', // Blue
+        '#ff006e', // Pink
+        '#ffbe0b', // Yellow
+        '#8338ec'  // Violet
+      ];
+
+      if (chartInstances[chartId]) chartInstances[chartId].destroy();
+      chartInstances[chartId] = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: values,
+            backgroundColor: backgroundColors,
+            borderColor: '#1a1a2e',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: false,
+          plugins: {
+            legend: {
+              labels: {
+                color: '#e6e6e6',
+                font: {
+                  size: 14
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function toggleDetails() {
+      document.getElementById("details").classList.toggle("open");
+    }
+
+    function toggleFriendDetails() {
+      document.getElementById("friendDetails").classList.toggle("open");
+    }
+
+    function generateExport() {
+      const yourPct = parseFloat(document.getElementById("yourPct").value) || 0;
+      const partnerPct = 100 - yourPct;
+      const expenses = document.querySelectorAll(".expense");
+      const names = document.querySelectorAll(".expense-name");
+      let csv = "Name,Amount,Your Share,Partner Share\n";
+      let totalExpense = 0;
+
+      expenses.forEach((input, index) => {
+        const amount = parseFloat(input.value) || 0;
+        const name = names[index].value || `Expense ${index + 1}`;
+        totalExpense += amount;
+        const yourShare = (yourPct / 100) * amount;
+        const partnerShare = (partnerPct / 100) * amount;
+        csv += `${name},${amount.toFixed(2)},${yourShare.toFixed(2)},${partnerShare.toFixed(2)}\n`;
+      });
+
+      const yourShare = (yourPct / 100) * totalExpense;
+      const partnerShare = (partnerPct / 100) * totalExpense;
+
+      csv += `\nTotal,${totalExpense.toFixed(2)},${yourShare.toFixed(2)},${partnerShare.toFixed(2)}\n`;
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const link = document.getElementById("downloadLink");
+      link.href = url;
+      link.download = "expense_breakdown.csv";
+      link.style.display = "inline-block";
+    }
+
+    window.onload = () => {
+      addExpense();
+      addFriendExpense();
+      calculateSplit();
+    };
+  </script>
+</body>
+</html>
